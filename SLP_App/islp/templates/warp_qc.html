@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h1>iSLP QC for Patient # {{user.PIDN}}</h1>
+  {% for snap in snapshots %}
+  <h2><p>{{snap.name}}:</p></h2>
+  <div><img src={{snap.path}}></div>
+  {% endfor %}
+
+{% endblock %}
