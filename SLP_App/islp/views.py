@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, session
 from werkzeug import secure_filename
 from islp import app
 import os
@@ -9,6 +9,13 @@ import matplotlib
 matplotlib.use('Agg')
 from matplotlib.pyplot import savefig
 import matplotlib.pyplot as plt
+
+
+def save_trimwav(wavpath, putpath, top_db=20):
+    y, sr = lib.load(wavpath)
+    yt, index = lib.effects.trim(y, top_db=top_db)
+    print(lib.get_duration(y), lib.get_duration(yt))
+    lib.output.write_wav(putpath, yt, sr)
 
 
 def plotwave(y, sr, putpath):
@@ -58,15 +65,30 @@ def upload_file():
         wavepng = plotwave(y, sr, putpath_wav.replace('.wav', '_wav.png'))
         wavepng_path = os.path.join(
             '/static/images/', os.path.basename(wavepng))
+        session['wav_path'] = putpath_wav
+        session['wav_png_path'] = wavepng_path
         return render_template("loaded_raw.html",
                                wavfile=putpath_wav, wavepng=wavepng_path)
 
 
 @app.route('/qc')
 def qc():
+    wav_path = session.get('wav_path', None)
+    wav_png = session.get('wav_png_path', None)
+    print(wav_path)
+    trim_wav_path = wav_path.replace('.wav', '_trim.wav')
+    print(trim_wav_path)
+    save_trimwav(wav_path, trim_wav_path)
+    y, sr, S_full, phase = loadwav(trim_wav_path)
+    trimpng = plotwave(y, sr, trim_wav_path.replace('.wav', '_wav.png'))
+    trimpng_path = os.path.join(
+        '/static/images/', os.path.basename(trimpng))
+    print('trimpng')
+    print(trimpng)
+    print(trimpng_path)
     user = {'PIDN': '1234'}
-    snapshots = [{'name': 'waveform', 'path': '/static/images/test1.png'},
-                 {'name': 'spectrogram', 'path': '/static/images/test2.png'}]
+    snapshots = [{'name': 'Original Waveform', 'path': wav_png},
+                 {'name': 'Trimmed Waveform', 'path': trimpng_path}]
 
     return render_template("qc.html", title='QC', user=user, snapshots=snapshots)
 

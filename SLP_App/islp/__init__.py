@@ -6,6 +6,7 @@ from flask import Flask
 app = Flask(__name__)
 # app.config['UPLOAD_FOLDER'] = 'tmp/'
 app.config['UPLOAD_FOLDER'] = 'islp/static/images/'
+app.secret_key = 'My secret key'
 
 # we want to keep this at bottom to avoid circular imports
 from islp import views
