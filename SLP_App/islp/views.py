@@ -3,6 +3,7 @@ from werkzeug import secure_filename
 from islp import app
 import os
 import librosa as lib
+import pandas as pd
 import numpy as np
 import librosa.display as libd
 from matplotlib.figure import Figure
@@ -41,7 +42,7 @@ def plotwarp(D, wp, hop_size, fs, putpath):
     ax = fig.add_subplot(111)
     lib.display.specshow(D, x_axis='time', y_axis='time',
                          cmap='gray_r', hop_length=hop_size)
-    imax = ax.imshow(D, cmap=plt.get_cmap('gray_r'),
+    imax = ax.imshow(D, cmap=plt.get_cmap('viridis'),
                      origin='lower', interpolation='nearest', aspect='auto')
 
     ax.plot(wp_s[:, 1], wp_s[:, 0], marker='o', color='r')
@@ -56,11 +57,11 @@ def plotmatch(x_1, fs1, x_2, fs2, wp, hop_size, putpath):
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(16, 8))
     # Plot x_1
     lib.display.waveplot(x_1, sr=fs1, ax=ax1)
-    ax1.set(title='Moving Version $X_1$')
+    ax1.set(title='Fixed Audio k $X_1$')
 
     # Plot x_2
     lib.display.waveplot(x_2, sr=fs2, ax=ax2)
-    ax2.set(title='Fixed Version $X_2$')
+    ax2.set(title='Moving Audio leeeee $X_2$')
 
     plt.tight_layout()
 
@@ -95,6 +96,50 @@ def dowarp_mfcc(y1, y2, sr1, sr2):
     D, wp = lib.sequence.dtw(X=mfcc1, Y=mfcc2, metric='cosine')
     # wp_s = np.asarray(melwp3) * hop_size / fs
     return D, wp
+
+
+def get_warp_features(D, wp):
+    wp_df = pd.DataFrame(wp, columns=['fixed_index', 'moving_index'])
+
+    warp_features = pd.DataFrame(wp_df.fixed_index.value_counts())
+    warp_features.rename(
+        index=str, columns={'fixed_index': 'fixed_frequency'}, inplace=True)
+    warp_features.index = warp_features.index.astype(int)
+    warp_features.sort_index(inplace=True)
+
+    fixed_vc = pd.DataFrame(wp_df.fixed_index.value_counts())
+    fixed_vc.rename(
+        index=str, columns={'fixed_index': 'fixed_frequency'}, inplace=True)
+
+    moving_vc = pd.DataFrame(wp_df.moving_index.value_counts())
+    moving_vc.rename(
+        index=str, columns={'moving_index': 'moving_frequency'}, inplace=True)
+
+    moving_vc.index = moving_vc.index.astype(int)
+    freq_df = wp_df.join(moving_vc, on='moving_index')
+    freq_df.drop_duplicates(subset='fixed_index', inplace=True)
+
+    freq_df2 = warp_features.join(freq_df.set_index('fixed_index'))
+    freq_df2.drop(columns='moving_index', inplace=True)
+
+    freq_df2[
+        'local_warp'] = freq_df2.fixed_frequency / freq_df2.moving_frequency
+    freq_df2.drop(columns=['fixed_frequency',
+                           'moving_frequency'], inplace=True)
+
+    point2point_df = pd.DataFrame(wp, columns=['fixed_index', 'moving_index'])
+
+    temp = []
+    for i in range(0, wp.shape[0]):
+        temp.append(D[wp[i, 0], wp[i, 1]])
+    point2point_df['cost_func'] = temp
+
+    costfunc_feature = pd.DataFrame(
+        point2point_df.groupby('fixed_index')['cost_func'].mean())
+
+    warp_final_features = freq_df2.join(costfunc_feature)
+
+    return warp_final_features
 
 
 @app.route('/')
@@ -170,7 +215,8 @@ def warp_qc():
 
     print('warping')
     D, wp = dowarp_mfcc(y_fixed, y_moving, sr_fixed, sr_moving)
-
+    print(D.shape)
+    print(wp.shape)
     hop_size = 512
     warp_png_putpath = trim_path_subject.replace('.wav', '_warp.png')
     match_png_putpath = trim_path_subject.replace('.wav', '_match.png')
@@ -190,6 +236,13 @@ def warp_qc():
     snapshots = [{'name': 'Warp to Template Waveform', 'path': warppng_path},
                  {'name': 'Matched Waveforms', 'path': matchpng_path}]
 
+    features = get_warp_features(D, wp)
+    csv_path = trim_path_subject.replace('.wav', '_features.csv')
+    features.to_csv(csv_path)
+    session['csv_path'] = csv_path
+    print('FEATURES')
+    print(features.shape)
+
     return render_template("warp_qc.html", title='Warp_QC', user=user, snapshots=snapshots)
 
 
@@ -197,7 +250,14 @@ def warp_qc():
 def model():
     with open('islp/models/svc_binary.pkl', 'rb') as f:
         loaded_model = pickle.load(f)
-    print(loaded_model)
+    csv_path = session.get('csv_path', None)
+    features_df = np.array(pd.read_csv(csv_path))
+    feature_vec = np.transpose(features_df.flatten('F').reshape(-1, 1))
+
+    prediction = loaded_model.predict(feature_vec)
+    print('PREDICT')
+    print(prediction)
+
     user = {'PIDN': '1234'}
     diagnosis = {'fullname': 'Nonfluent Variant Primary Progressive Aphasia'}
     posts = [
