@@ -35,8 +35,8 @@ def loadwav(wavpath):
 @app.route('/index')
 def index():
     user = {'PIDN': '1234'}
-    snapshots = [{'name': 'waveform', 'path': '/static/images/test1.png'},
-                 {'name': 'spectrogram', 'path': '/static/images/test2.png'}]
+    snapshots = [
+        {'name': 'logo', 'path': '/static/images/iSLP_logo_small.png'}]
     return render_template("index.html", title='Home', user=user, snapshots=snapshots)
 
 
