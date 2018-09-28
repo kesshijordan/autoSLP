@@ -2,10 +2,8 @@ from flask import Flask, render_template, request, redirect, url_for
 from werkzeug import secure_filename
 from islp import app
 import os
-
 import librosa as lib
 import librosa.display as libd
-# import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 import matplotlib
 matplotlib.use('Agg')
