@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h1>iSLP Upload Mode</h1>
+  <div>
+  <h2>Upload your .wav file here: </h2>
+      <form action = "http://localhost:5000/uploader" method = "POST"
+         enctype = "multipart/form-data">
+         <input type = "file" name = "file" />
+         <input type = "submit"/>
+      </form>
+  </div>
+{% endblock %}

@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h1>iSLP Prediction for Patient # {{user.PIDN}}</h1>
+  {% for post in posts %}
+  <div><p>P({{post.group}}): <b>{{post.probability}}</b></p></div>
+  {% endfor %}
+
+  <div><p>iSLP predicts: <b>{{diagnosis.fullname}}</b></p></div>
+
+{% endblock %}

@@ -1,0 +1,19 @@
+<html>
+  <head>
+    {% if title %}
+    <title>{{title}} - iSLP</title>
+    {% else %}
+    <title>Welcome to iSLP!!</title>
+    {% endif %}
+  </head>
+  <body>
+    <div>
+      iSLP: <a href="/index">Home</a>
+      <a href="/upload">Upload</a>
+      <a href="/qc">QC</a>
+      <a href="/model">Prediction</a>
+    </div>
+    <hr>
+    {% block content %}{% endblock%}
+  </body>
+</html>
