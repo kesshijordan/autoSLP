@@ -187,7 +187,7 @@ def run_demo():
     print('DEMOing')
     if request.method == 'POST':
         print('POSTing')
-        putpath_wav = 'islp/static/images/kesshi_grandfather2.wav'
+        putpath_wav = 'islp/static/images/Demo_Negative.wav'
         print(os.path.abspath(putpath_wav))
         # return redirect('/qc')
 
@@ -205,7 +205,7 @@ def run_demo():
 @app.route('/demo_positive', methods=['GET', 'POST'])
 def run_demo_pos():
     if request.method == 'POST':
-        putpath_wav = 'islp/static/images/Andrew_grandfather2.wav'
+        putpath_wav = 'islp/static/images/Demo_Positive.wav'
         print(os.path.abspath(putpath_wav))
         # return redirect('/qc')
 
