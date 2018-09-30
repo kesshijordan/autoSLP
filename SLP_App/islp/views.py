@@ -57,11 +57,11 @@ def plotmatch(x_1, fs1, x_2, fs2, wp, hop_size, putpath):
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(16, 8))
     # Plot x_1
     lib.display.waveplot(x_1, sr=fs1, ax=ax1)
-    ax1.set(title='Fixed Audio Template $X_1$')
+    ax1.set(title='Audio Template')
 
     # Plot x_2
     lib.display.waveplot(x_2, sr=fs2, ax=ax2)
-    ax2.set(title='Uploaded Audio File $X_2$')
+    ax2.set(title='Uploaded Audio File')
 
     plt.tight_layout()
 
@@ -188,6 +188,24 @@ def run_demo():
     if request.method == 'POST':
         print('POSTing')
         putpath_wav = 'islp/static/images/kesshi_grandfather2.wav'
+        print(os.path.abspath(putpath_wav))
+        # return redirect('/qc')
+
+        # Next we we want to load and display the waveform
+        y, sr = loadwav(putpath_wav)
+        wavepng = plotwave(y, sr, putpath_wav.replace('.wav', '_wav.png'))
+        wavepng_path = os.path.join(
+            '/static/images/', os.path.basename(wavepng))
+        session['wav_path'] = putpath_wav
+        session['wav_png_path'] = wavepng_path
+        return render_template("demo.html",
+                               wavfile=putpath_wav, wavepng=wavepng_path)
+
+
+@app.route('/demo_positive', methods=['GET', 'POST'])
+def run_demo_pos():
+    if request.method == 'POST':
+        putpath_wav = 'islp/static/images/andrew_grandfather.wav'
         print(os.path.abspath(putpath_wav))
         # return redirect('/qc')
 
