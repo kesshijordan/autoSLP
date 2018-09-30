@@ -248,35 +248,34 @@ def warp_qc():
 
 @app.route('/model')
 def model():
-    with open('islp/models/svc_binary.pkl', 'rb') as f:
+    with open('islp/models/svc_binary_kesh_template.pkl', 'rb') as f:
         loaded_model = pickle.load(f)
     csv_path = session.get('csv_path', None)
-    features_df = np.array(pd.read_csv(csv_path))
+    features_df = np.array(pd.read_csv(csv_path, index_col=0))
+    print('FEATURES DF LOAD')
+    print(features_df.shape)
     feature_vec = np.transpose(features_df.flatten('F').reshape(-1, 1))
-
-    prediction = loaded_model.predict(feature_vec)
+    print(feature_vec.shape)
+    print(feature_vec[0:5, :])
+    prediction = loaded_model.predict(feature_vec)[0]
+    P_class1, P_class2 = loaded_model.predict_proba(feature_vec)[0]
     print('PREDICT')
     print(prediction)
-
+    print('PROBABILITIES')
+    print(P_class1, P_class2)
+    print('CLASSES')
+    print(loaded_model.classes_)
     user = {'PIDN': '1234'}
-    diagnosis = {'fullname': 'Nonfluent Variant Primary Progressive Aphasia'}
+    diagnosis = {'fullname': prediction}
     posts = [
         {
-            'group': 'Normal Aging',
-            'probability': '10%'
+            'group': loaded_model.classes_[0],
+            'probability': "{:.2%}".format(P_class1)
         },
         {
-            'group': 'Nonfluent Variant PPA',
-            'probability': '60%'
+            'group': loaded_model.classes_[1],
+            'probability': "{:.2%}".format(P_class2)
         },
-        {
-            'group': 'Semantic Variant PPA',
-            'probability': '16%'
-        },
-        {
-            'group': 'Logopenic Variant PPA',
-            'probability': '14%'
-        }
     ]
 
     return render_template("model.html", title='Prediction', user=user, posts=posts, diagnosis=diagnosis)

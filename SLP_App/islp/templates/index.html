@@ -2,7 +2,6 @@
 
 {% block content %}
   <h1>Welcome to iSLP!</h1>
-  <h2>Now viewing Patient # {{user.PIDN}}</h2>
   {% for snap in snapshots %}
   <div><img src={{snap.path}}></div>
   {% endfor %}
