@@ -41,12 +41,12 @@ def plotwarp(D, wp, hop_size, fs, putpath):
     fig = plt.figure(figsize=(10, 10))
     ax = fig.add_subplot(111)
     lib.display.specshow(D, x_axis='time', y_axis='time',
-                         cmap='gray_r', hop_length=hop_size)
+                         cmap='viridis', hop_length=hop_size)
     imax = ax.imshow(D, cmap=plt.get_cmap('viridis'),
                      origin='lower', interpolation='nearest', aspect='auto')
 
     ax.plot(wp_s[:, 1], wp_s[:, 0], marker='o', color='r')
-    plt.title('Warping Path on Acc. Cost Matrix $D$')
+    plt.title('Warping Path on Cost Matrix')
     plt.colorbar()
     savefig(putpath)
     plt.gcf().clear()
@@ -57,11 +57,11 @@ def plotmatch(x_1, fs1, x_2, fs2, wp, hop_size, putpath):
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(16, 8))
     # Plot x_1
     lib.display.waveplot(x_1, sr=fs1, ax=ax1)
-    ax1.set(title='Fixed Audio k $X_1$')
+    ax1.set(title='Fixed Audio Template $X_1$')
 
     # Plot x_2
     lib.display.waveplot(x_2, sr=fs2, ax=ax2)
-    ax2.set(title='Moving Audio leeeee $X_2$')
+    ax2.set(title='Uploaded Audio File $X_2$')
 
     plt.tight_layout()
 
@@ -179,6 +179,26 @@ def upload_file():
         session['wav_path'] = putpath_wav
         session['wav_png_path'] = wavepng_path
         return render_template("loaded_raw.html",
+                               wavfile=putpath_wav, wavepng=wavepng_path)
+
+
+@app.route('/demo', methods=['GET', 'POST'])
+def run_demo():
+    print('DEMOing')
+    if request.method == 'POST':
+        print('POSTing')
+        putpath_wav = 'islp/static/images/kesshi_grandfather2.wav'
+        print(os.path.abspath(putpath_wav))
+        # return redirect('/qc')
+
+        # Next we we want to load and display the waveform
+        y, sr = loadwav(putpath_wav)
+        wavepng = plotwave(y, sr, putpath_wav.replace('.wav', '_wav.png'))
+        wavepng_path = os.path.join(
+            '/static/images/', os.path.basename(wavepng))
+        session['wav_path'] = putpath_wav
+        session['wav_png_path'] = wavepng_path
+        return render_template("demo.html",
                                wavfile=putpath_wav, wavepng=wavepng_path)
 
 
