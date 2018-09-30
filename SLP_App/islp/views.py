@@ -161,11 +161,11 @@ def upload_file():
     if request.method == 'POST':
         file = request.files['file']
         filename = secure_filename(file.filename)
-        '''ext = os.path.splitext(filename)[1]
+        ext = os.path.splitext(filename)[1]
         if (ext == ".wav"):
             print("File accepted")
         else:
-            return render_template("error.html", message="Only .wav files are supported at this time."), 400'''
+            return render_template("error.html", message="only .wav files are supported at this time.")
         putpath_wav = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(putpath_wav)
         print(os.path.abspath(putpath_wav))
@@ -260,7 +260,7 @@ def model():
     prediction = loaded_model.predict(feature_vec)[0]
     P_class1, P_class2 = loaded_model.predict_proba(feature_vec)[0]
     print('PREDICT')
-    print(prediction)
+    print(loaded_model.predict(feature_vec))
     print('PROBABILITIES')
     print(P_class1, P_class2)
     print('CLASSES')
