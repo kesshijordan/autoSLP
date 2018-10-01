@@ -32,7 +32,6 @@ def plotwave(y, sr, putpath):
     libd.waveplot(y, sr=sr, x_axis='time')
     savefig(putpath)
     plt.gcf().clear()
-    return putpath
 
 
 def plotwarp(D, wp, hop_size, fs, putpath):
@@ -142,6 +141,77 @@ def get_warp_features(D, wp):
     return warp_final_features
 
 
+def process_case(wav_path, demo=False, hop_size=512,
+                 trim_path_template='islp/models/kesshi_grandfather_trim.wav',
+                 model_path='islp/models/svc_binary_kesh_template.pkl'):
+    # load and display the uploaded waveform
+    if not demo:
+        y, sr = loadwav(wav_path)
+    wavpng = wav_path.replace('.wav', '_wav.png')
+    if not demo:
+        plotwave(y, sr, wavpng)
+    # trim the uploaded waveform (remove silence at beginning or end)
+    trim_wav_path = wav_path.replace('.wav', '_trim.wav')
+    print(trim_wav_path)
+    if not demo:
+        save_trimwav(wav_path, trim_wav_path)
+        y, sr = loadwav(trim_wav_path)
+    trimpng = trim_wav_path.replace('.wav', '_wav.png')
+    if not demo:
+        plotwave(y, sr, trimpng)
+
+        # Load template file
+        y_template, sr_template = loadwav(trim_path_template)
+
+        # Warp the uploaded file to the template
+        print('warping')
+        D, wp = dowarp_mfcc(y_template, y, sr_template, sr)
+        print(D.shape)
+        print(wp.shape)
+
+    warppng = trim_wav_path.replace('.wav', '_warp.png')
+    matchpng = trim_wav_path.replace('.wav', '_match.png')
+    if not demo:
+        plotwarp(D, wp, hop_size, sr_template, warppng)
+        plotmatch(y_template, sr_template, y, sr,
+                  wp, hop_size, matchpng)
+
+        # Extract features
+        features = get_warp_features(D, wp)
+
+    csv_path = trim_wav_path.replace('.wav', '_features.csv')
+
+    if not demo:
+        features.to_csv(csv_path)
+    else:
+        features = pd.read_csv(csv_path, index_col=0)
+
+    print('FEATURES')
+    print(features.shape)
+
+    # Load and run the model
+    with open(model_path, 'rb') as f:
+        loaded_model = pickle.load(f)
+
+    feature_vec = np.transpose(np.array(features).flatten('F').reshape(-1, 1))
+    print('FEATURE VEC')
+    print(feature_vec.shape)
+    print(feature_vec[0:5, :])
+    prediction = loaded_model.predict(feature_vec)[0]
+    P_class1, P_class2 = loaded_model.predict_proba(feature_vec)[0]
+    print('PREDICT')
+    print(loaded_model.predict(feature_vec))
+    print('PROBABILITIES')
+    print(P_class1, P_class2)
+    print('CLASSES')
+    print(loaded_model.classes_)
+    model_output = {'Probabilities': list([P_class1, P_class2]),
+                    'Classes': list(loaded_model.classes_),
+                    'Prediction': prediction}
+
+    return wavpng, trimpng, warppng, matchpng, csv_path, model_output
+
+
 @app.route('/')
 @app.route('/index')
 def index():
@@ -169,37 +239,60 @@ def upload_file():
         putpath_wav = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(putpath_wav)
         print(os.path.abspath(putpath_wav))
-        # return redirect('/qc')
 
-        # Next we we want to load and display the waveform
-        y, sr = loadwav(putpath_wav)
-        wavepng = plotwave(y, sr, putpath_wav.replace('.wav', '_wav.png'))
-        wavepng_path = os.path.join(
-            '/static/images/', os.path.basename(wavepng))
+        wavpng, trimpng, warppng, matchpng, csv, model_dict = process_case(
+            putpath_wav)
+
+        wavpng_path = os.path.join(
+            '/static/images/', os.path.basename(wavpng))
+        trimpng_path = os.path.join(
+            '/static/images/', os.path.basename(trimpng))
+        warppng_path = os.path.join(
+            '/static/images/', os.path.basename(warppng))
+        matchpng_path = os.path.join(
+            '/static/images/', os.path.basename(matchpng))
+        csv_path = os.path.join(
+            '/static/images/', os.path.basename(csv))
         session['wav_path'] = putpath_wav
-        session['wav_png_path'] = wavepng_path
+        session['wav_png_path'] = wavpng_path
+        session['trim_png_path'] = trimpng_path
+        session['warp_png_path'] = warppng_path
+        session['match_png_path'] = matchpng_path
+        session['csv_path'] = csv_path
+        session['model_dict'] = model_dict
         return render_template("loaded_raw.html",
-                               wavfile=putpath_wav, wavepng=wavepng_path)
+                               wavfile=putpath_wav, wavpng=wavpng_path)
 
 
 @app.route('/demo', methods=['GET', 'POST'])
 def run_demo():
     print('DEMOing')
     if request.method == 'POST':
-        print('POSTing')
         putpath_wav = 'islp/static/images/Demo_Negative.wav'
-        print(os.path.abspath(putpath_wav))
-        # return redirect('/qc')
 
-        # Next we we want to load and display the waveform
-        y, sr = loadwav(putpath_wav)
-        wavepng = plotwave(y, sr, putpath_wav.replace('.wav', '_wav.png'))
-        wavepng_path = os.path.join(
-            '/static/images/', os.path.basename(wavepng))
+        wavpng, trimpng, warppng, matchpng, csv, model_dict = process_case(
+            putpath_wav, demo=True)
+
+        wavpng_path = os.path.join(
+            '/static/images/', os.path.basename(wavpng))
+        trimpng_path = os.path.join(
+            '/static/images/', os.path.basename(trimpng))
+        warppng_path = os.path.join(
+            '/static/images/', os.path.basename(warppng))
+        matchpng_path = os.path.join(
+            '/static/images/', os.path.basename(matchpng))
+        csv_path = os.path.join(
+            '/static/images/', os.path.basename(csv))
         session['wav_path'] = putpath_wav
-        session['wav_png_path'] = wavepng_path
+        session['wav_png_path'] = wavpng_path
+        session['trim_png_path'] = trimpng_path
+        session['warp_png_path'] = warppng_path
+        session['match_png_path'] = matchpng_path
+        session['csv_path'] = csv_path
+        session['model_dict'] = model_dict
+
         return render_template("demo.html",
-                               wavfile=putpath_wav, wavepng=wavepng_path)
+                               wavfile=putpath_wav, wavepng=wavpng_path)
 
 
 @app.route('/demo_positive', methods=['GET', 'POST'])
@@ -208,112 +301,72 @@ def run_demo_pos():
         print('POSTING')
         putpath_wav = 'islp/static/images/Demo_Positive.wav'
         print(os.path.abspath(putpath_wav))
-        # return redirect('/qc')
 
-        # Next we we want to load and display the waveform
-        y, sr = loadwav(putpath_wav)
-        wavepng = plotwave(y, sr, putpath_wav.replace('.wav', '_wav.png'))
-        wavepng_path = os.path.join(
-            '/static/images/', os.path.basename(wavepng))
+        wavpng, trimpng, warppng, matchpng, csv, model_dict = process_case(
+            putpath_wav, demo=True)
+
+        wavpng_path = os.path.join(
+            '/static/images/', os.path.basename(wavpng))
+        trimpng_path = os.path.join(
+            '/static/images/', os.path.basename(trimpng))
+        warppng_path = os.path.join(
+            '/static/images/', os.path.basename(warppng))
+        matchpng_path = os.path.join(
+            '/static/images/', os.path.basename(matchpng))
+        csv_path = os.path.join(
+            '/static/images/', os.path.basename(csv))
         session['wav_path'] = putpath_wav
-        session['wav_png_path'] = wavepng_path
+        session['wav_png_path'] = wavpng_path
+        session['trim_png_path'] = trimpng_path
+        session['warp_png_path'] = warppng_path
+        session['match_png_path'] = matchpng_path
+        session['csv_path'] = csv_path
+        session['model_dict'] = model_dict
         return render_template("demo.html",
-                               wavfile=putpath_wav, wavepng=wavepng_path)
+                               wavfile=putpath_wav, wavepng=wavpng_path)
 
 
 @app.route('/qc')
 def qc():
-    wav_path = session.get('wav_path', None)
+    # wav_path = session.get('wav_path', None)
     wav_png = session.get('wav_png_path', None)
-    print(wav_path)
-    trim_wav_path = wav_path.replace('.wav', '_trim.wav')
-    print(trim_wav_path)
-    save_trimwav(wav_path, trim_wav_path)
-    y, sr = loadwav(trim_wav_path)
-    trimpng = plotwave(y, sr, trim_wav_path.replace('.wav', '_wav.png'))
-    trimpng_path = os.path.join(
-        '/static/images/', os.path.basename(trimpng))
-    print('trimpng')
-    print(trimpng)
-    print(trimpng_path)
+    trim_png = session.get('trim_png_path', None)
+
     user = {'PIDN': '1234'}
     snapshots = [{'name': 'Original Waveform', 'path': wav_png},
-                 {'name': 'Trimmed Waveform', 'path': trimpng_path}]
-    session['trim_path'] = trim_wav_path
-    session['trim_png_path'] = trimpng_path
+                 {'name': 'Trimmed Waveform', 'path': trim_png}]
+
     return render_template("qc.html", title='QC', user=user, snapshots=snapshots)
 
 
 @app.route('/warp_qc')
 def warp_qc():
-    trim_path_subject = session.get('trim_path', None)
-    trim_path_template = 'islp/models/kesshi_grandfather_trim.wav'
 
-    y_moving, sr_moving = loadwav(trim_path_subject)
-    y_fixed, sr_fixed = loadwav(trim_path_template)
-
-    print('warping')
-    D, wp = dowarp_mfcc(y_fixed, y_moving, sr_fixed, sr_moving)
-    print(D.shape)
-    print(wp.shape)
-    hop_size = 512
-    warp_png_putpath = trim_path_subject.replace('.wav', '_warp.png')
-    match_png_putpath = trim_path_subject.replace('.wav', '_match.png')
-    plotwarp(D, wp, hop_size, sr_fixed, warp_png_putpath)
-    plotmatch(y_fixed, sr_fixed, y_moving, sr_moving,
-              wp, hop_size, match_png_putpath)
-
-    warppng_path = os.path.join(
-        '/static/images/', os.path.basename(warp_png_putpath))
-    matchpng_path = os.path.join(
-        '/static/images/', os.path.basename(match_png_putpath))
-    print('PATHS')
-    print(warp_png_putpath)
-    print(warppng_path)
+    warp_png_path = session.get('warp_png_path', None)
+    match_png_path = session.get('match_png_path', None)
 
     user = {'PIDN': '1234'}
-    snapshots = [{'name': 'Warp to Template Waveform', 'path': warppng_path},
-                 {'name': 'Matched Waveforms', 'path': matchpng_path}]
-
-    features = get_warp_features(D, wp)
-    csv_path = trim_path_subject.replace('.wav', '_features.csv')
-    features.to_csv(csv_path)
-    session['csv_path'] = csv_path
-    print('FEATURES')
-    print(features.shape)
+    snapshots = [{'name': 'Warp to Template Waveform', 'path': warp_png_path},
+                 {'name': 'Matched Waveforms', 'path': match_png_path}]
 
     return render_template("warp_qc.html", title='Warp_QC', user=user, snapshots=snapshots)
 
 
 @app.route('/model')
 def model():
-    with open('islp/models/svc_binary_kesh_template.pkl', 'rb') as f:
-        loaded_model = pickle.load(f)
-    csv_path = session.get('csv_path', None)
-    features_df = np.array(pd.read_csv(csv_path, index_col=0))
-    print('FEATURES DF LOAD')
-    print(features_df.shape)
-    feature_vec = np.transpose(features_df.flatten('F').reshape(-1, 1))
-    print(feature_vec.shape)
-    print(feature_vec[0:5, :])
-    prediction = loaded_model.predict(feature_vec)[0]
-    P_class1, P_class2 = loaded_model.predict_proba(feature_vec)[0]
-    print('PREDICT')
-    print(loaded_model.predict(feature_vec))
-    print('PROBABILITIES')
-    print(P_class1, P_class2)
-    print('CLASSES')
-    print(loaded_model.classes_)
+
+    model_dict = session.get('model_dict', None)
+
     user = {'PIDN': '1234'}
-    diagnosis = {'fullname': prediction}
+    diagnosis = {'fullname': model_dict['Prediction']}
     posts = [
         {
-            'group': loaded_model.classes_[0],
-            'probability': "{:.2%}".format(P_class1)
+            'group': model_dict['Classes'][0],
+            'probability': "{:.2%}".format(model_dict['Probabilities'][0])
         },
         {
-            'group': loaded_model.classes_[1],
-            'probability': "{:.2%}".format(P_class2)
+            'group': model_dict['Classes'][1],
+            'probability': "{:.2%}".format(model_dict['Probabilities'][1])
         },
     ]
 
