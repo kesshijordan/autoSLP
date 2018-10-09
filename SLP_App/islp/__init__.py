@@ -5,7 +5,6 @@ from flask import Flask
 
 app = Flask(__name__)
 # app.config['UPLOAD_FOLDER'] = 'tmp/'
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 app.config['UPLOAD_FOLDER'] = 'islp/static/images/'
 app.secret_key = 'My secret key'
 
