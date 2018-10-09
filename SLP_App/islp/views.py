@@ -26,6 +26,12 @@ def save_trimwav(wavpath, putpath, top_db=20):
     yt, index = lib.effects.trim(y, top_db=top_db)
     print(lib.get_duration(y), lib.get_duration(yt))
     lib.output.write_wav(putpath, yt, sr)
+    return y, sr
+
+def trimwav(y, top_db=20):
+    yt, index = lib.effects.trim(y, top_db=top_db)
+    print(lib.get_duration(y), lib.get_duration(yt))
+    return yt
 
 
 def plotwave(y, sr, putpath):
@@ -40,9 +46,9 @@ def plotwarp(D, wp, hop_size, fs, putpath):
     fig = plt.figure(figsize=(10, 10))
     ax = fig.add_subplot(111)
     lib.display.specshow(D, x_axis='time', y_axis='time',
-                         cmap='viridis', hop_length=hop_size)
+                         cmap='viridis', hop_length=hop_size, vmax=100)
     imax = ax.imshow(D, cmap=plt.get_cmap('viridis'),
-                     origin='lower', interpolation='nearest', aspect='auto')
+                     origin='lower', interpolation='nearest', aspect='auto', vmax=100)
 
     ax.plot(wp_s[:, 1], wp_s[:, 0], marker='o', color='r')
     plt.title('Warping Path on Cost Matrix')
@@ -144,20 +150,26 @@ def get_warp_features(D, wp):
 def process_case(wav_path, demo=False, hop_size=512,
                  trim_path_template='islp/models/kesshi_grandfather_trim.wav',
                  model_path='islp/models/svc_binary_kesh_template.pkl'):
-    # load and display the uploaded waveform
-    if not demo:
-        y, sr = loadwav(wav_path)
+    # set all the paths
     wavpng = wav_path.replace('.wav', '_wav.png')
+    #trim_wav_path = wav_path.replace('.wav', '_trim.wav')
+    trimpng = wav_path.replace('.wav', '_trim_wav.png')
+    warppng = wav_path.replace('.wav', '_trim_warp.png')
+    matchpng = wav_path.replace('.wav', '_trim_match.png')
+    #print(trim_wav_path)
+    print(trimpng)
+    # load and display the uploaded waveform
+    print('DEMO???')
+    print(demo)
     if not demo:
-        plotwave(y, sr, wavpng)
-    # trim the uploaded waveform (remove silence at beginning or end)
-    trim_wav_path = wav_path.replace('.wav', '_trim.wav')
-    print(trim_wav_path)
-    if not demo:
-        save_trimwav(wav_path, trim_wav_path)
-        y, sr = loadwav(trim_wav_path)
-    trimpng = trim_wav_path.replace('.wav', '_wav.png')
-    if not demo:
+        y_upload, sr = loadwav(wav_path)
+        print('TRIMMING')
+        print(len(y_upload))
+        plotwave(y_upload, sr, wavpng)
+        # trim the uploaded waveform (remove silence at beginning or end)
+        y = trimwav(y_upload)
+        print(len(y))
+        #y, sr = loadwav(trim_wav_path)
         plotwave(y, sr, trimpng)
 
         # Load template file
@@ -169,9 +181,6 @@ def process_case(wav_path, demo=False, hop_size=512,
         print(D.shape)
         print(wp.shape)
 
-    warppng = trim_wav_path.replace('.wav', '_warp.png')
-    matchpng = trim_wav_path.replace('.wav', '_match.png')
-    if not demo:
         plotwarp(D, wp, hop_size, sr_template, warppng)
         plotmatch(y_template, sr_template, y, sr,
                   wp, hop_size, matchpng)
@@ -179,7 +188,7 @@ def process_case(wav_path, demo=False, hop_size=512,
         # Extract features
         features = get_warp_features(D, wp)
 
-    csv_path = trim_wav_path.replace('.wav', '_features.csv')
+    csv_path = wav_path.replace('.wav', '_trim_features.csv')
 
     if not demo:
         features.to_csv(csv_path)
